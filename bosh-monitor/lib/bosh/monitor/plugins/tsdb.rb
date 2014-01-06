@@ -29,8 +29,15 @@ module Bosh::Monitor
           raise PluginError, "Invalid event metrics: Enumerable expected, #{metrics.class} given"
         end
 
-        metrics.each do |metric|
-          @tsdb.send_metric(metric.name, metric.timestamp, metric.value, metric.tags)
+        if event.is_a? Bosh::Monitor::Events::Heartbeat
+          metrics.each do |metric|
+            tags = metric.tags.merge({deployment: event.deployment})
+            @tsdb.send_metric(metric.name, metric.timestamp, metric.value, tags)
+          end
+        else
+          metrics.each do |metric|
+            @tsdb.send_metric(metric.name, metric.timestamp, metric.value, metric.tags.clone)
+          end
         end
 
         true

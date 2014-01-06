@@ -34,15 +34,23 @@ describe Bhm::Plugins::Tsdb do
   it "sends event metrics to TSDB" do
     tsdb = double("tsdb connection")
 
-    alert = Bhm::Events::Base.create!(:alert, alert_payload)
-    heartbeat = Bhm::Events::Base.create!(:heartbeat, heartbeat_payload)
+    alert = make_alert(timestamp: Time.now.to_i)
+    heartbeat = make_heartbeat(timestamp: Time.now.to_i)
 
     EM.run do
       EM.should_receive(:connect).with("localhost", 4242, Bhm::TsdbConnection, "localhost", 4242).once.and_return(tsdb)
       @plugin.run
 
-      (alert.metrics + heartbeat.metrics).each do |metric|
-        tsdb.should_receive(:send_metric).with(metric.name, metric.timestamp, metric.value, metric.tags)
+      alert.metrics.each do |metric|
+        expected_tags = metric.tags
+
+        tsdb.should_receive(:send_metric).with(metric.name, metric.timestamp, metric.value, expected_tags)
+      end
+
+      heartbeat.metrics.each do |metric|
+        expected_tags = metric.tags.merge({deployment: "oleg-cloud"})
+
+        tsdb.should_receive(:send_metric).with(metric.name, metric.timestamp, metric.value, expected_tags)
       end
 
       @plugin.process(alert)
