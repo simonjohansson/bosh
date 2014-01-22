@@ -15,7 +15,8 @@ module Bosh::Cli
     end
 
     def result
-      ERB.new(@raw_manifest, 4).result(binding.taint)
+      erb_security_level = ENV['ERB_SECURITY_LEVEL'] ? ENV['ERB_SECURITY_LEVEL'].to_i : 4
+      ERB.new(@raw_manifest, erb_security_level).result(binding.taint)
     rescue SyntaxError => e
       raise MalformedManifest,
             "Deployment manifest contains a syntax error\n" + e.to_s
